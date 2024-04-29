@@ -5,11 +5,11 @@
 ### 패키지 다운로드
 
 ```
-$ npm i
+$ yarn
 ```
 
 ### 실행
 
 ```
-$ npm run dev
+$ yarn dev
 ```
