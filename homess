@@ -1,0 +1,75 @@
+import React, { useState } from 'react';
+import { Modal, Button } from 'react-bootstrap';
+
+const Home = () => {
+  const [showModal, setShowModal] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [data, setData] = useState([]);
+  const [contextMenu, setContextMenu] = useState(null);
+
+  const handleSelect = (id) => {
+    setSelectedRows((prev) =>
+      prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id],
+    );
+  };
+
+  const mergeSelectedRows = () => {
+    setShowModal(true);
+  };
+
+  const confirmMerge = () => {
+    const partValue = data.find((row) => row.id === selectedRows[0]).Part;
+    const updatedData = data.map((row) =>
+      selectedRows.includes(row.id) ? { ...row, Part: partValue } : row,
+    );
+    setData(updatedData);
+    setSelectedRows([]);
+    setContextMenu(null);
+    setShowModal(false);
+  };
+
+  const cancelMerge = () => {
+    setShowModal(false);
+  };
+
+  const unmergeSelectedRows = () => {
+    const updatedData = data.map((row) =>
+      selectedRows.includes(row.id) ? { ...row, Part: `${row.Part} ${row.id}` } : row,
+    );
+    setData(updatedData);
+    setSelectedRows([]);
+    setContextMenu(null);
+  };
+
+  const calculateRowSpans = (data) => {
+    const rowSpans = [];
+    let currentPart = null;
+    let spanCount = 0;
+
+    data.forEach((row, index) => {
+      // existing code
+    });
+  };
+
+  return (
+    <div>
+      {/* existing code */}
+      <Modal show={showModal} onHide={cancelMerge}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Merge</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Do you want to merge this cell before merging into a larger part?</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={cancelMerge}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={confirmMerge}>
+            Confirm
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </div>
+  );
+};
+
+export default Home;

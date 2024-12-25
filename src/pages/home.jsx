@@ -1,6 +1,8 @@
+/* eslint-disable react/prop-types */
 import React, { useState } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+
 import {
   Table,
   TableHead,
@@ -15,8 +17,12 @@ import {
   MenuItem,
   Checkbox,
   IconButton,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
@@ -65,6 +71,34 @@ const tableData = [
   },
 ];
 
+const calculateRowSpans = (data, collapsedParts) => {
+  const rowSpans = [];
+  let currentPart = null;
+  let spanCount = 1;
+
+  data.forEach((row, index) => {
+    if (row.Part !== currentPart) {
+      if (spanCount > 0) {
+        rowSpans[rowSpans.length - spanCount] = spanCount;
+      }
+      currentPart = row.Part;
+      const isCollapsed = collapsedParts[row.Part];
+      const partRowCount = data.filter((r) => r.Part === row.Part).length;
+      spanCount = isCollapsed && partRowCount > 1 ? 0 : 1;
+      rowSpans.push(isCollapsed && partRowCount > 1 ? -1 : 1);
+    } else {
+      spanCount++;
+      rowSpans.push(collapsedParts[row.Part] ? -1 : 0);
+    }
+  });
+
+  if (spanCount > 0) {
+    rowSpans[rowSpans.length - spanCount] = spanCount;
+  }
+
+  return rowSpans;
+};
+
 const DraggableRow = ({
   row,
   index,
@@ -75,29 +109,64 @@ const DraggableRow = ({
   togglePartCollapse,
   isSelected,
   handleSelect,
+  data,
 }) => {
   const [, ref] = useDrag({
     type: ItemType,
     item: { index },
-  });
-
-  const [, drop] = useDrop({
-    accept: ItemType,
-    hover: (draggedItem, monitor) => {
-      if (!monitor.isOver({ shallow: true })) {
-        return;
-      }
-      if (draggedItem.index !== index) {
-        moveRow(draggedItem.index, index);
-        draggedItem.index = index;
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult();
+      if (dropResult && dropResult.index !== undefined) {
+        moveRow(item.index, item.index, dropResult.index);
       }
     },
   });
 
+  const [, partRef] = useDrag({
+    type: ItemType,
+    item: () => {
+      const partValue = row.Part;
+      let startIndex = index;
+      let endIndex = index;
+
+      for (let i = index - 1; i >= 0; i--) {
+        if (data[i].Part === partValue) {
+          startIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      for (let i = index + 1; i < data.length; i++) {
+        if (data[i].Part === partValue) {
+          endIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      return { index, startIndex, endIndex };
+    },
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult();
+      if (dropResult && dropResult.index !== undefined) {
+        moveRow(item.startIndex, item.endIndex, dropResult.index);
+      }
+    },
+  });
+
+  const [, drop] = useDrop({
+    accept: ItemType,
+    drop: () => ({ index }),
+  });
+
+  if (isPartCollapsed && partRowSpan === -1) {
+    return null;
+  }
+
   return (
     <TableRow
       ref={(node) => ref(drop(node))}
-      sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f9f9f9' } }}
       onContextMenu={(event) => handleContextMenu(event, index)}
     >
       <TableCell padding="checkbox">
@@ -105,16 +174,18 @@ const DraggableRow = ({
       </TableCell>
       {partRowSpan > 0 && (
         <TableCell
+          ref={partRef}
           rowSpan={partRowSpan}
           sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}
         >
           {row.Part}
           <IconButton size="small" onClick={() => togglePartCollapse(row.Part)}>
-            {isPartCollapsed ?
-              <ExpandMoreIcon />
-            : <ExpandLessIcon />}
+            {isPartCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
           </IconButton>
         </TableCell>
+      )}
+      {partRowSpan === 1 && isPartCollapsed && (
+        <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }} colSpan={6} />
       )}
       {!isPartCollapsed && (
         <>
@@ -142,32 +213,58 @@ const DraggableRow = ({
   );
 };
 
+// filepath: /C:/dev/table/src/pages/home.jsx
 const Home = () => {
   const [data, setData] = useState(tableData);
   const [contextMenu, setContextMenu] = useState(null);
   const [collapsedParts, setCollapsedParts] = useState({});
   const [selectedRows, setSelectedRows] = useState([]);
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState(null);
 
-  const moveRow = (fromIndex, toIndex) => {
+  const moveRow = (startIndex, endIndex, toIndex) => {
     const updatedData = [...data];
-    const [movedRow] = updatedData.splice(fromIndex, 1);
-    updatedData.splice(toIndex, 0, movedRow);
+    const rowsToMove = updatedData.splice(startIndex, endIndex - startIndex + 1);
+    const targetPart = updatedData[toIndex]?.Part;
 
-    // Find all rows with the same Part value and move them together
-    const partValue = movedRow.Part;
-    const rowsToMove = [
-      movedRow,
-      ...updatedData.filter((row) => row.Part === partValue),
-    ];
-    rowsToMove.forEach((row) => {
-      const rowIndex = updatedData.indexOf(row);
-      if (rowIndex !== -1) {
-        updatedData.splice(rowIndex, 1);
+    if (targetPart) {
+      const targetPartRowCount = updatedData.filter((row) => row.Part === targetPart).length;
+      const draggedPartRowCount = rowsToMove.length;
+
+      if (draggedPartRowCount < targetPartRowCount) {
+        setMergeTarget({ rowsToMove, targetPart, startIndex, toIndex, updatedData });
+        setMergeModalOpen(true);
+      } else {
+        updatedData.splice(toIndex, 0, ...rowsToMove);
+        setData(updatedData);
       }
-    });
-    updatedData.splice(toIndex, 0, ...rowsToMove);
+    } else {
+      updatedData.splice(toIndex, 0, ...rowsToMove);
+      setData(updatedData);
+    }
+  };
 
-    setData(updatedData);
+  const handleMergeConfirm = () => {
+    if (mergeTarget) {
+      const { rowsToMove, targetPart, toIndex, updatedData } = mergeTarget;
+      rowsToMove.forEach((row) => {
+        row.Part = targetPart;
+      });
+      updatedData.splice(toIndex, 0, ...rowsToMove);
+      setData(updatedData);
+      setMergeTarget(null);
+      setMergeModalOpen(false);
+    }
+  };
+
+  const handleMergeCancel = () => {
+    if (mergeTarget) {
+      const { rowsToMove, toIndex, updatedData } = mergeTarget;
+      updatedData.splice(toIndex, 0, ...rowsToMove);
+      setData(updatedData);
+      setMergeTarget(null);
+      setMergeModalOpen(false);
+    }
   };
 
   const addRow = (index) => {
@@ -190,13 +287,13 @@ const Home = () => {
   const handleContextMenu = (event, index) => {
     event.preventDefault();
     setContextMenu(
-      contextMenu === null ?
-        {
-          mouseX: event.clientX - 2,
-          mouseY: event.clientY - 4,
-          rowIndex: index,
-        }
-      : null,
+      contextMenu === null
+        ? {
+            mouseX: event.clientX - 2,
+            mouseY: event.clientY - 4,
+            rowIndex: index,
+          }
+        : null,
     );
   };
 
@@ -229,40 +326,14 @@ const Home = () => {
 
   const unmergeSelectedRows = () => {
     const updatedData = data.map((row) =>
-      selectedRows.includes(row.id) ? { ...row, Part: `Part ${row.id}` } : row,
+      selectedRows.includes(row.id) ? { ...row, Part: `${row.Part} ${row.id}` } : row,
     );
     setData(updatedData);
     setSelectedRows([]);
     setContextMenu(null);
   };
 
-  const calculateRowSpans = (data) => {
-    const rowSpans = [];
-    let currentPart = null;
-    let spanCount = 0;
-
-    data.forEach((row, index) => {
-      if (row.Part !== currentPart) {
-        if (spanCount > 0) {
-          rowSpans[rowSpans.length - spanCount] = spanCount;
-        }
-        currentPart = row.Part;
-        spanCount = 1;
-        rowSpans.push(0);
-      } else {
-        spanCount++;
-        rowSpans.push(-1);
-      }
-    });
-
-    if (spanCount > 0) {
-      rowSpans[rowSpans.length - spanCount] = spanCount;
-    }
-
-    return rowSpans;
-  };
-
-  const rowSpans = calculateRowSpans(data);
+  const rowSpans = calculateRowSpans(data, collapsedParts);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -281,13 +352,8 @@ const Home = () => {
               <TableRow>
                 <TableCell padding="checkbox">
                   <Checkbox
-                    indeterminate={
-                      selectedRows.length > 0 &&
-                      selectedRows.length < data.length
-                    }
-                    checked={
-                      data.length > 0 && selectedRows.length === data.length
-                    }
+                    indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
+                    checked={data.length > 0 && selectedRows.length === data.length}
                     onChange={(event) => {
                       if (event.target.checked) {
                         setSelectedRows(data.map((row) => row.id));
@@ -312,6 +378,7 @@ const Home = () => {
                   key={row.id}
                   row={row}
                   index={index}
+                  data={data}
                   moveRow={moveRow}
                   handleContextMenu={handleContextMenu}
                   partRowSpan={rowSpans[index]}
@@ -329,17 +396,35 @@ const Home = () => {
           onClose={handleClose}
           anchorReference="anchorPosition"
           anchorPosition={
-            contextMenu !== null ?
-              { top: contextMenu.mouseY, left: contextMenu.mouseX }
-            : undefined
+            contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
           }
         >
-          <MenuItem onClick={() => addRow(contextMenu.rowIndex)}>
-            Add Row Below
-          </MenuItem>
+          <MenuItem onClick={() => addRow(contextMenu.rowIndex)}>Add Row Below</MenuItem>
           <MenuItem onClick={mergeSelectedRows}>병합</MenuItem>
           <MenuItem onClick={unmergeSelectedRows}>병합 해제</MenuItem>
         </Menu>
+
+        <Dialog
+          open={mergeModalOpen}
+          onClose={handleMergeCancel}
+          aria-labelledby="merge-dialog-title"
+          aria-describedby="merge-dialog-description"
+        >
+          <DialogTitle id="merge-dialog-title">셀 병합 확인</DialogTitle>
+          <DialogContent>
+            <DialogContentText id="merge-dialog-description">
+              해당 셀을 "{mergeTarget?.targetPart}"에 병합하시겠습니까?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleMergeCancel} color="secondary">
+              아니요
+            </Button>
+            <Button onClick={handleMergeConfirm} color="primary" autoFocus>
+              예
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </DndProvider>
   );
