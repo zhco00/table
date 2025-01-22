@@ -1,8 +1,9 @@
-/* eslint-disable react/prop-types */
-import React, { useState } from 'react';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
+// React imports
+import { useState } from 'react';
+import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
+// MUI imports
 import {
   Table,
   TableHead,
@@ -16,61 +17,18 @@ import {
   Menu,
   MenuItem,
   Checkbox,
-  IconButton,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
 } from '@mui/material';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-const ItemType = 'ROW';
+// Component imports
+import tableData from '@/components/dummy';
+import DraggableRow from '@/components/draggableRow';
 
-const tableData = [
-  {
-    id: 1,
-    Part: 'Planning',
-    Division: 'Frontend',
-    Work: 'UI Design',
-    Engineer: 'John Doe',
-    StartDate: '2024-12-01',
-    DueDate: '2024-12-05',
-    Status: 'Completed',
-  },
-  {
-    id: 2,
-    Part: 'Development',
-    Division: 'Frontend',
-    Work: 'Component Development',
-    Engineer: 'Jane Smith',
-    StartDate: '2024-12-02',
-    DueDate: '2024-12-06',
-    Status: 'Pending',
-  },
-  {
-    id: 3,
-    Part: 'Development',
-    Division: 'Backend',
-    Work: 'API Integration',
-    Engineer: 'Alice Brown',
-    StartDate: '2024-12-03',
-    DueDate: '2024-12-10',
-    Status: 'Pending',
-  },
-  {
-    id: 4,
-    Part: 'Testing',
-    Division: 'QA',
-    Work: 'Functional Testing',
-    Engineer: 'Tom Lee',
-    StartDate: '2024-12-05',
-    DueDate: '2024-12-15',
-    Status: 'Completed',
-  },
-];
-
+// 데이터를 받아서 행의 크기을 계산하는 함수
 const calculateRowSpans = (data, collapsedParts) => {
   const rowSpans = [];
   let currentPart = null;
@@ -82,9 +40,13 @@ const calculateRowSpans = (data, collapsedParts) => {
         rowSpans[rowSpans.length - spanCount] = spanCount;
       }
       currentPart = row.Part;
+
       const isCollapsed = collapsedParts[row.Part];
-      const partRowCount = data.filter((r) => r.Part === row.Part).length;
+
+      const partRowCount = data.filter((r) => r.Part === currentPart).length;
+
       spanCount = isCollapsed && partRowCount > 1 ? 0 : 1;
+
       rowSpans.push(isCollapsed && partRowCount > 1 ? -1 : 1);
     } else {
       spanCount++;
@@ -99,129 +61,26 @@ const calculateRowSpans = (data, collapsedParts) => {
   return rowSpans;
 };
 
-const DraggableRow = ({
-  row,
-  index,
-  moveRow,
-  handleContextMenu,
-  partRowSpan,
-  isPartCollapsed,
-  togglePartCollapse,
-  isSelected,
-  handleSelect,
-  data,
-}) => {
-  const [, ref] = useDrag({
-    type: ItemType,
-    item: { index },
-    end: (item, monitor) => {
-      const dropResult = monitor.getDropResult();
-      if (dropResult && dropResult.index !== undefined) {
-        moveRow(item.index, item.index, dropResult.index);
-      }
-    },
-  });
-
-  const [, partRef] = useDrag({
-    type: ItemType,
-    item: () => {
-      const partValue = row.Part;
-      let startIndex = index;
-      let endIndex = index;
-
-      for (let i = index - 1; i >= 0; i--) {
-        if (data[i].Part === partValue) {
-          startIndex = i;
-        } else {
-          break;
-        }
-      }
-
-      for (let i = index + 1; i < data.length; i++) {
-        if (data[i].Part === partValue) {
-          endIndex = i;
-        } else {
-          break;
-        }
-      }
-
-      return { index, startIndex, endIndex };
-    },
-    end: (item, monitor) => {
-      const dropResult = monitor.getDropResult();
-      if (dropResult && dropResult.index !== undefined) {
-        moveRow(item.startIndex, item.endIndex, dropResult.index);
-      }
-    },
-  });
-
-  const [, drop] = useDrop({
-    accept: ItemType,
-    drop: () => ({ index }),
-  });
-
-  if (isPartCollapsed && partRowSpan === -1) {
-    return null;
-  }
-
-  return (
-    <TableRow
-      ref={(node) => ref(drop(node))}
-      onContextMenu={(event) => handleContextMenu(event, index)}
-    >
-      <TableCell padding="checkbox">
-        <Checkbox checked={isSelected} onChange={() => handleSelect(row.id)} />
-      </TableCell>
-      {partRowSpan > 0 && (
-        <TableCell
-          ref={partRef}
-          rowSpan={partRowSpan}
-          sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}
-        >
-          {row.Part}
-          <IconButton size="small" onClick={() => togglePartCollapse(row.Part)}>
-            {isPartCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
-          </IconButton>
-        </TableCell>
-      )}
-      {partRowSpan === 1 && isPartCollapsed && (
-        <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }} colSpan={6} />
-      )}
-      {!isPartCollapsed && (
-        <>
-          <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}>
-            {row.Division}
-          </TableCell>
-          <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}>
-            {row.Work}
-          </TableCell>
-          <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}>
-            {row.Engineer}
-          </TableCell>
-          <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}>
-            {row.StartDate}
-          </TableCell>
-          <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}>
-            {row.DueDate}
-          </TableCell>
-          <TableCell sx={{ borderBottom: '1px solid rgba(224, 224, 224, 1)' }}>
-            {row.Status}
-          </TableCell>
-        </>
-      )}
-    </TableRow>
-  );
-};
-
-// filepath: /C:/dev/table/src/pages/home.jsx
 const Home = () => {
-  const [data, setData] = useState(tableData);
-  const [contextMenu, setContextMenu] = useState(null);
-  const [collapsedParts, setCollapsedParts] = useState({});
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [mergeModalOpen, setMergeModalOpen] = useState(false);
-  const [mergeTarget, setMergeTarget] = useState(null);
 
+  const [data, setData] = useState(tableData); // 테이블 데이터
+  const [contextMenu, setContextMenu] = useState(null); // 컨텍스트 메뉴 상태
+  const [collapsedParts, setCollapsedParts] = useState({}); // 접힌 파트 상태
+
+  const [selectedRows, setSelectedRows] = useState([]); // 선택된 행 상태
+  const [mergeModalOpen, setMergeModalOpen] = useState(false); // 병합 모달 상태
+  const [mergeTarget, setMergeTarget] = useState(null); // 병합 대상 상태
+
+  const [editingRow, setEditingRow] = useState(null); // 현재 편집 중인 행 ID
+  const [editingField, setEditingField] = useState(null); // 현재 편집 중인 필드 이름
+
+  const updateRow = (rowId, updatedValues) => {
+    setData((prevData) =>
+      prevData.map((row) => (row.id === rowId ? { ...row, ...updatedValues } : row)),
+    );
+  };
+
+  // 행을 이동하는 함수
   const moveRow = (startIndex, endIndex, toIndex) => {
     const updatedData = [...data];
     const rowsToMove = updatedData.splice(startIndex, endIndex - startIndex + 1);
@@ -244,6 +103,7 @@ const Home = () => {
     }
   };
 
+  // 병합 확인 처리 함수
   const handleMergeConfirm = () => {
     if (mergeTarget) {
       const { rowsToMove, targetPart, toIndex, updatedData } = mergeTarget;
@@ -257,6 +117,7 @@ const Home = () => {
     }
   };
 
+  // 병합 취소 처리 함수
   const handleMergeCancel = () => {
     if (mergeTarget) {
       const { rowsToMove, toIndex, updatedData } = mergeTarget;
@@ -267,6 +128,7 @@ const Home = () => {
     }
   };
 
+  // 행 추가 함수
   const addRow = (index) => {
     const newRow = {
       id: data.length + 1,
@@ -284,6 +146,7 @@ const Home = () => {
     setContextMenu(null);
   };
 
+  // 컨텍스트 메뉴 핸들러
   const handleContextMenu = (event, index) => {
     event.preventDefault();
     setContextMenu(
@@ -297,10 +160,12 @@ const Home = () => {
     );
   };
 
+  // 컨텍스트 메뉴 닫기 함수
   const handleClose = () => {
     setContextMenu(null);
   };
 
+  // 파트 접기/펼치기 토글 함수
   const togglePartCollapse = (part) => {
     setCollapsedParts((prev) => ({
       ...prev,
@@ -308,12 +173,14 @@ const Home = () => {
     }));
   };
 
+  // 행 선택 핸들러
   const handleSelect = (id) => {
     setSelectedRows((prev) =>
       prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id],
     );
   };
 
+  // 선택된 행 병합 함수
   const mergeSelectedRows = () => {
     const partValue = data.find((row) => row.id === selectedRows[0]).Part;
     const updatedData = data.map((row) =>
@@ -324,6 +191,7 @@ const Home = () => {
     setContextMenu(null);
   };
 
+  // 선택된 행 병합 해제 함수
   const unmergeSelectedRows = () => {
     const updatedData = data.map((row) =>
       selectedRows.includes(row.id) ? { ...row, Part: `${row.Part} ${row.id}` } : row,
@@ -333,6 +201,7 @@ const Home = () => {
     setContextMenu(null);
   };
 
+  // 행의 크기(span) 계산
   const rowSpans = calculateRowSpans(data, collapsedParts);
 
   return (
@@ -386,6 +255,11 @@ const Home = () => {
                   togglePartCollapse={togglePartCollapse}
                   isSelected={selectedRows.includes(row.id)}
                   handleSelect={handleSelect}
+                  updateRow={updateRow} 
+                  editingRow={editingRow}
+                  setEditingRow={setEditingRow} 
+                  editingField={editingField}
+                  setEditingField={setEditingField} 
                 />
               ))}
             </TableBody>
@@ -413,7 +287,7 @@ const Home = () => {
           <DialogTitle id="merge-dialog-title">셀 병합 확인</DialogTitle>
           <DialogContent>
             <DialogContentText id="merge-dialog-description">
-              해당 셀을 "{mergeTarget?.targetPart}"에 병합하시겠습니까?
+              해당 셀을 {mergeTarget?.targetPart}에 병합하시겠습니까?
             </DialogContentText>
           </DialogContent>
           <DialogActions>
