@@ -52,10 +52,10 @@ const DraggableRow = ({
   editingField,
   setEditingField,
 }) => {
-  const { id, Part, Division, Work, Engineer, StartDate, DueDate, Status } = row;
+  const { id, Part, Part_Group_ID, Division, Work, Engineer, StartDate, DueDate, Status } = row;
 
   // 스타일 상수화
-  const cellStyle = { borderBottom: '1px solid rgba(224, 224, 224, 1)' };
+  const cellStyle = { borderBottom: '1px solid rgba(224, 224, 224, 1)', width: '100px' };
 
   // 드래그 구현
   const [, ref] = useDrag({
@@ -90,13 +90,15 @@ const DraggableRow = ({
     drop: () => ({ index }),
   });
 
-  // Part가 접힌 상태에서 렌더링하지 않음
-  if (isPartCollapsed && partRowSpan === -1) {
-    return null;
-  }
-
   //TextField로 전환하여 값을 수정할 수 있도록 하는 함수
   const renderCell = (field, value) => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        setEditingRow(null);
+        setEditingField(null);
+      }
+    };
+
     return editingRow === id && editingField === field ? (
       <TextField
         variant="standard"
@@ -106,6 +108,7 @@ const DraggableRow = ({
           setEditingRow(null);
           setEditingField(null);
         }}
+        onKeyDown={handleKeyDown}
         autoFocus
         fullWidth
       />
@@ -120,7 +123,10 @@ const DraggableRow = ({
       </div>
     );
   };
-
+  // Part가 접힌 상태에서 렌더링하지 않음
+  if (isPartCollapsed && partRowSpan === -1) {
+    return null;
+  }
   return (
     <TableRow
       ref={(node) => ref(drop(node))}
@@ -131,11 +137,19 @@ const DraggableRow = ({
       </TableCell>
 
       {partRowSpan > 0 && (
-        <TableCell ref={partRef} rowSpan={partRowSpan} sx={cellStyle}>
-          {Part}
-          <IconButton size="small" onClick={() => togglePartCollapse(Part)}>
-            {isPartCollapsed ?  <ExpandLessIcon /> :<ExpandMoreIcon />}
-          </IconButton>
+        <TableCell ref={partRef} rowSpan={partRowSpan} sx={(cellStyle, { width: '150px' })}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {renderCell('Part', Part)}
+            <IconButton
+              size="small"
+              onClick={() => {
+                console.log(`Toggling collapse for row id: ${id}`, Part_Group_ID);
+                togglePartCollapse(Part_Group_ID);
+              }}
+            >
+              {isPartCollapsed ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </div>
         </TableCell>
       )}
 
@@ -145,12 +159,20 @@ const DraggableRow = ({
       {/* 접히지 않은 상태에서 데이터 렌더링 */}
       {!isPartCollapsed && (
         <>
-          <TableCell sx={cellStyle}>{renderCell('Division', Division)}</TableCell>
-          <TableCell sx={cellStyle}>{renderCell('Work', Work)}</TableCell>
+          <TableCell sx={(cellStyle, { width: '100px' })}>
+            {renderCell('Division', Division)}
+          </TableCell>
+          <TableCell sx={(cellStyle, { width: '200px' })}>{renderCell('Work', Work)}</TableCell>
           <TableCell sx={cellStyle}>{renderCell('Engineer', Engineer)}</TableCell>
           <TableCell sx={cellStyle}>{renderCell('StartDate', StartDate)}</TableCell>
           <TableCell sx={cellStyle}>{renderCell('DueDate', DueDate)}</TableCell>
           <TableCell sx={cellStyle}>{renderCell('Status', Status)}</TableCell>
+        </>
+      )}
+      {/* 접힌 상태에서 병합 해제된 셀 */}
+      {isPartCollapsed && partRowSpan === -1 && (
+        <>
+          <TableCell sx={{ display: 'none' }} colSpan={6} />
         </>
       )}
     </TableRow>
