@@ -1,7 +1,6 @@
 // React imports
 import { useState } from 'react';
 import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // MUI imports
 import {
@@ -27,43 +26,57 @@ import {
 // Component imports
 import tableData from '@/components/dummy';
 import DraggableRow from '@/components/draggableRow';
+import createCustomHTML5Backend from '@/components/HTML5Backend';
 
 // 데이터를 받아서 행의 크기을 계산하는 함수
 const calculateRowSpans = (data, collapsedParts) => {
-  const rowSpans = [];
-  let currentPart = null;
-  let spanCount = 1;
+  const rowSpans = new Array(data.length).fill(1);
+  let partMap = new Map();
 
+  // `Part_Group_ID` 기준으로 그룹핑하여 rowSpan 계산
   data.forEach((row, index) => {
-    if (row.Part !== currentPart) {
-      if (spanCount > 0) {
-        rowSpans[rowSpans.length - spanCount] = spanCount;
-      }
-      currentPart = row.Part;
-
-      const isCollapsed = collapsedParts[row.Part];
-
-      const partRowCount = data.filter((r) => r.Part === currentPart).length;
-
-      spanCount = isCollapsed && partRowCount > 1 ? 0 : 1;
-
-      rowSpans.push(isCollapsed && partRowCount > 1 ? -1 : 1);
-    } else {
-      spanCount++;
-      rowSpans.push(collapsedParts[row.Part] ? -1 : 0);
+    const groupId = row.Part_Group_ID;
+    if (!partMap.has(groupId)) {
+      partMap.set(groupId, []);
     }
+    partMap.get(groupId).push(index);
   });
 
-  if (spanCount > 0) {
-    rowSpans[rowSpans.length - spanCount] = spanCount;
-  }
+  partMap.forEach((indices, groupId) => {
+    const isCollapsed = collapsedParts[groupId];
+
+    if (isCollapsed) {
+      // 접힌 상태이면 첫 번째 행을 제외한 나머지는 숨김 (-1 처리)
+      indices.forEach((idx, i) => {
+        rowSpans[idx] = i === 0 ? 1 : -1; // 첫 번째 행은 1, 나머지는 숨김
+      });
+    } else {
+      // 펼쳐진 상태에서는 모든 행을 정상 표시
+      indices.forEach((idx, i) => {
+        rowSpans[idx] = i === 0 ? indices.length : 0;
+      });
+    }
+  });
 
   return rowSpans;
 };
 
-const Home = () => {
+const generateGroups = (data) => {
+  let groupIdCounter = 1;
+  let lastPart = null;
+  let lastGroupId = null;
 
-  const [data, setData] = useState(tableData); // 테이블 데이터
+  return data.map((row) => {
+    if (row.Part !== lastPart) {
+      lastGroupId = `group-${groupIdCounter++}`;
+      lastPart = row.Part;
+    }
+    return { ...row, Part_Group_ID: lastGroupId };
+  });
+};
+
+const Home = () => {
+  const [data, setData] = useState(generateGroups(tableData)); // 테이블 데이터
   const [contextMenu, setContextMenu] = useState(null); // 컨텍스트 메뉴 상태
   const [collapsedParts, setCollapsedParts] = useState({}); // 접힌 파트 상태
 
@@ -95,11 +108,11 @@ const Home = () => {
         setMergeModalOpen(true);
       } else {
         updatedData.splice(toIndex, 0, ...rowsToMove);
-        setData(updatedData);
+        setData(generateGroups(updatedData));
       }
     } else {
       updatedData.splice(toIndex, 0, ...rowsToMove);
-      setData(updatedData);
+      setData(generateGroups(updatedData));
     }
   };
 
@@ -111,7 +124,7 @@ const Home = () => {
         row.Part = targetPart;
       });
       updatedData.splice(toIndex, 0, ...rowsToMove);
-      setData(updatedData);
+      setData(generateGroups(updatedData));
       setMergeTarget(null);
       setMergeModalOpen(false);
     }
@@ -122,7 +135,7 @@ const Home = () => {
     if (mergeTarget) {
       const { rowsToMove, toIndex, updatedData } = mergeTarget;
       updatedData.splice(toIndex, 0, ...rowsToMove);
-      setData(updatedData);
+      setData(generateGroups(updatedData));
       setMergeTarget(null);
       setMergeModalOpen(false);
     }
@@ -142,10 +155,21 @@ const Home = () => {
     };
     const updatedData = [...data];
     updatedData.splice(index + 1, 0, newRow);
-    setData(updatedData);
+    setData(generateGroups(updatedData));
     setContextMenu(null);
   };
-
+  // 행 삭제 함수
+  const deleteRow = (index) => {
+    const updatedData = data.filter((_, i) => i !== index);
+    setData(generateGroups(updatedData));
+    setContextMenu(null);
+  };
+  const deleteSelectedRows = () => {
+    const updatedData = data.filter((row) => !selectedRows.includes(row.id));
+    setData(generateGroups(updatedData));
+    setSelectedRows([]);
+    setContextMenu(null);
+  };
   // 컨텍스트 메뉴 핸들러
   const handleContextMenu = (event, index) => {
     event.preventDefault();
@@ -166,10 +190,10 @@ const Home = () => {
   };
 
   // 파트 접기/펼치기 토글 함수
-  const togglePartCollapse = (part) => {
+  const togglePartCollapse = (groupId) => {
     setCollapsedParts((prev) => ({
       ...prev,
-      [part]: !prev[part],
+      [groupId]: !prev[groupId],
     }));
   };
 
@@ -186,7 +210,7 @@ const Home = () => {
     const updatedData = data.map((row) =>
       selectedRows.includes(row.id) ? { ...row, Part: partValue } : row,
     );
-    setData(updatedData);
+    setData(generateGroups(updatedData));
     setSelectedRows([]);
     setContextMenu(null);
   };
@@ -196,7 +220,7 @@ const Home = () => {
     const updatedData = data.map((row) =>
       selectedRows.includes(row.id) ? { ...row, Part: `${row.Part} ${row.id}` } : row,
     );
-    setData(updatedData);
+    setData(generateGroups(updatedData));
     setSelectedRows([]);
     setContextMenu(null);
   };
@@ -205,7 +229,7 @@ const Home = () => {
   const rowSpans = calculateRowSpans(data, collapsedParts);
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={createCustomHTML5Backend}>
       <Container>
         <Button
           variant="contained"
@@ -224,11 +248,7 @@ const Home = () => {
                     indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
                     checked={data.length > 0 && selectedRows.length === data.length}
                     onChange={(event) => {
-                      if (event.target.checked) {
-                        setSelectedRows(data.map((row) => row.id));
-                      } else {
-                        setSelectedRows([]);
-                      }
+                      setSelectedRows(event.target.checked ? data.map((row) => row.id) : []);
                     }}
                   />
                 </TableCell>
@@ -251,15 +271,15 @@ const Home = () => {
                   moveRow={moveRow}
                   handleContextMenu={handleContextMenu}
                   partRowSpan={rowSpans[index]}
-                  isPartCollapsed={collapsedParts[row.Part]}
+                  isPartCollapsed={collapsedParts[row.Part_Group_ID]}
                   togglePartCollapse={togglePartCollapse}
                   isSelected={selectedRows.includes(row.id)}
                   handleSelect={handleSelect}
-                  updateRow={updateRow} 
+                  updateRow={updateRow}
                   editingRow={editingRow}
-                  setEditingRow={setEditingRow} 
+                  setEditingRow={setEditingRow}
                   editingField={editingField}
-                  setEditingField={setEditingField} 
+                  setEditingField={setEditingField}
                 />
               ))}
             </TableBody>
@@ -276,6 +296,8 @@ const Home = () => {
           <MenuItem onClick={() => addRow(contextMenu.rowIndex)}>Add Row Below</MenuItem>
           <MenuItem onClick={mergeSelectedRows}>병합</MenuItem>
           <MenuItem onClick={unmergeSelectedRows}>병합 해제</MenuItem>
+          <MenuItem onClick={() => deleteRow(contextMenu.rowIndex)}>단일 행 삭제</MenuItem>
+          <MenuItem onClick={deleteSelectedRows}>선택된 행 삭제</MenuItem>
         </Menu>
 
         <Dialog
