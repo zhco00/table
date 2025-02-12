@@ -29,6 +29,32 @@ import tableData from '@/components/dummy';
 import DraggableRow from '@/components/draggableRow';
 import createCustomHTML5Backend from '@/components/HTML5Backend';
 
+//컴포넌트 분리
+const TableHeader = ({ selectedRows, data, setSelectedRows }) => {
+  return (
+    <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+      <TableRow>
+        <TableCell padding="checkbox">
+          <Checkbox
+            indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
+            checked={data.length > 0 && selectedRows.length === data.length}
+            onChange={(event) => {
+              setSelectedRows(event.target.checked ? data.map((row) => row.id) : []);
+            }}
+          />
+        </TableCell>
+        <TableCell>Part</TableCell>
+        <TableCell>Division</TableCell>
+        <TableCell>Work</TableCell>
+        <TableCell>Engineer</TableCell>
+        <TableCell>Start Date</TableCell>
+        <TableCell>Due Date</TableCell>
+        <TableCell>Status</TableCell>
+      </TableRow>
+    </TableHead>
+  );
+};
+
 // 데이터를 받아서 행의 크기을 계산하는 함수
 const calculateRowSpans = (data, collapsedParts) => {
   const rowSpans = new Array(data.length).fill(1);
@@ -89,6 +115,7 @@ const Home = () => {
   const [editingField, setEditingField] = useState(null); // 현재 편집 중인 필드 이름
 
   const updateRow = (rowId, updatedValues) => {
+
     setData((prevData) =>
       prevData.map((row) => (row.id === rowId ? { ...row, ...updatedValues } : row)),
     );
@@ -154,6 +181,7 @@ const Home = () => {
       DueDate: '2024-12-05',
       Status: 'Pending',
     };
+
     const updatedData = [...data];
     updatedData.splice(index + 1, 0, newRow);
     setData(generateGroups(updatedData));
@@ -242,26 +270,7 @@ const Home = () => {
         </Button>
         <TableContainer component={Paper}>
           <Table sx={{ minWidth: 650 }}>
-            <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
-              <TableRow>
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
-                    checked={data.length > 0 && selectedRows.length === data.length}
-                    onChange={(event) => {
-                      setSelectedRows(event.target.checked ? data.map((row) => row.id) : []);
-                    }}
-                  />
-                </TableCell>
-                <TableCell>Part</TableCell>
-                <TableCell>Division</TableCell>
-                <TableCell>Work</TableCell>
-                <TableCell>Engineer</TableCell>
-                <TableCell>Start Date</TableCell>
-                <TableCell>Due Date</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
+            <TableHeader selectedRows={selectedRows} data={data} setSelectedRows={setSelectedRows} />
             <TableBody>
               {data.map((row, index) => (
                 <DraggableRow

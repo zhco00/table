@@ -2,6 +2,7 @@
 
 //React Imports
 import { useDrag, useDrop } from 'react-dnd';
+import { useState } from 'react';
 // MUI imports
 import { TableRow, TableCell, Checkbox, IconButton, TextField } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -57,6 +58,9 @@ const DraggableRow = ({
   // 스타일 상수화
   const cellStyle = { borderBottom: '1px solid rgba(224, 224, 224, 1)', width: '100px' };
 
+  //임시 상태 추가
+  const [tempValue, setTempValue] = useState('');
+
   // 드래그 구현
   const [, ref] = useDrag({
     type: ItemType,
@@ -94,6 +98,7 @@ const DraggableRow = ({
   const renderCell = (field, value) => {
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
+        updateRow(id, { [field]: tempValue });
         setEditingRow(null);
         setEditingField(null);
       }
@@ -102,9 +107,10 @@ const DraggableRow = ({
     return editingRow === id && editingField === field ? (
       <TextField
         variant="standard"
-        value={value}
-        onChange={(e) => updateRow(id, { [field]: e.target.value })}
+        value={tempValue}
+        onChange={(e) => setTempValue(e.target.value)}
         onBlur={() => {
+          updateRow(id, { [field]: tempValue });
           setEditingRow(null);
           setEditingField(null);
         }}
@@ -117,6 +123,7 @@ const DraggableRow = ({
         onClick={() => {
           setEditingRow(id);
           setEditingField(field);
+          setTempValue(value);
         }}
       >
         {value}
