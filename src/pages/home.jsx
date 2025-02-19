@@ -28,6 +28,7 @@ import {
 import tableData from '@/components/dummy';
 import DraggableRow from '@/components/draggableRow';
 import createCustomHTML5Backend from '@/components/HTML5Backend';
+import GanttChart from '@/components/GanttChart';
 
 //컴포넌트 분리
 const TableHeader = ({ selectedRows, data, setSelectedRows }) => {
@@ -259,7 +260,7 @@ const Home = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <Container>
+      <Container maxWidth={false}>
         <Button
           variant="contained"
           color="primary"
@@ -268,33 +269,44 @@ const Home = () => {
         >
           Add Row
         </Button>
-        <TableContainer component={Paper}>
-          <Table sx={{ minWidth: 650 }}>
-            <TableHeader selectedRows={selectedRows} data={data} setSelectedRows={setSelectedRows} />
-            <TableBody>
-              {data.map((row, index) => (
-                <DraggableRow
-                  key={row.id}
-                  row={row}
-                  index={index}
-                  data={data}
-                  moveRow={moveRow}
-                  handleContextMenu={handleContextMenu}
-                  partRowSpan={rowSpans[index]}
-                  isPartCollapsed={collapsedParts[row.Part_Group_ID]}
-                  togglePartCollapse={togglePartCollapse}
-                  isSelected={selectedRows.includes(row.id)}
-                  handleSelect={handleSelect}
-                  updateRow={updateRow}
-                  editingRow={editingRow}
-                  setEditingRow={setEditingRow}
-                  editingField={editingField}
-                  setEditingField={setEditingField}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <div style={{ display: 'flex' }}>
+          <TableContainer component={Paper} sx={{ flex: '1 1 auto' }}>
+            <Table sx={{ minWidth: 650 }}>
+              <TableHeader selectedRows={selectedRows} data={data} setSelectedRows={setSelectedRows} />
+              <TableBody>
+                {data.map((row, index) => (
+                  <DraggableRow
+                    key={row.id}
+                    row={row}
+                    index={index}
+                    data={data}
+                    moveRow={moveRow}
+                    handleContextMenu={handleContextMenu}
+                    partRowSpan={rowSpans[index]}
+                    isPartCollapsed={collapsedParts[row.Part_Group_ID]}
+                    togglePartCollapse={togglePartCollapse}
+                    isSelected={selectedRows.includes(row.id)}
+                    handleSelect={handleSelect}
+                    updateRow={updateRow}
+                    editingRow={editingRow}
+                    setEditingRow={setEditingRow}
+                    editingField={editingField}
+                    setEditingField={setEditingField}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          {/* 간트 차트 추가 */}
+          <div style={{ flex: '0 0 400px' }}>
+            <GanttChart 
+              data={data} 
+              collapsedParts={collapsedParts}
+            />
+          </div>
+        </div>
+        
         <Menu
           open={contextMenu !== null}
           onClose={handleClose}
