@@ -6,6 +6,8 @@ import { useState } from 'react';
 
 const GanttChart = ({ data, collapsedParts }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const ROW_HEIGHT = 48;
+  const BAR_HEIGHT = 20;
 
   // 전체 프로젝트 기간 계산
   const startDates = data.map(item => new Date(item.StartDate));
@@ -88,11 +90,16 @@ const GanttChart = ({ data, collapsedParts }) => {
             </div>
 
             {/* 간트 차트 바 */}
-            <div style={{ marginTop: '25px', position: 'relative', minHeight: 'calc(100% - 65px)' }}>
+            <div style={{ 
+              position: 'relative',
+              minHeight: 'calc(100% - 40px)',
+              paddingTop: '12px'
+            }}>
               {data.map((row, index) => {
-                if (collapsedParts[row.Part_Group_ID] && index !== 0) return null;
+                if (collapsedParts[row.Part_Group_ID]) return null;
 
                 const position = getBarPosition(row.StartDate, row.DueDate);
+                const verticalPosition = (index * ROW_HEIGHT) + ((ROW_HEIGHT - BAR_HEIGHT) / 2);
                 
                 return (
                   <Tooltip 
@@ -106,8 +113,8 @@ const GanttChart = ({ data, collapsedParts }) => {
                     <div
                       style={{
                         position: 'absolute',
-                        height: '20px',
-                        top: `${(index * 53)}px`,
+                        height: `${BAR_HEIGHT}px`,
+                        top: `${verticalPosition}px`,
                         backgroundColor: row.Status === 'Completed' ? '#4caf50' : '#2196f3',
                         borderRadius: '4px',
                         cursor: 'pointer',
