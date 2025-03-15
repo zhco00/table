@@ -95,7 +95,7 @@ const DraggableRow = ({
   });
 
   //TextField로 전환하여 값을 수정할 수 있도록 하는 함수
-  const renderCell = (field, value) => {
+  const renderCell = (field, value, type) => {
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
         updateRow(id, { [field]: tempValue });
@@ -108,6 +108,7 @@ const DraggableRow = ({
       <TextField
         variant="standard"
         value={tempValue}
+        type={type}
         onChange={(e) => setTempValue(e.target.value)}
         onBlur={() => {
           updateRow(id, { [field]: tempValue });
@@ -117,6 +118,7 @@ const DraggableRow = ({
         onKeyDown={handleKeyDown}
         autoFocus
         fullWidth
+        sx={{ width: '120px' }}
       />
     ) : (
       <div
@@ -171,8 +173,12 @@ const DraggableRow = ({
           </TableCell>
           <TableCell sx={(cellStyle, { width: '200px' })}>{renderCell('Work', Work)}</TableCell>
           <TableCell sx={cellStyle}>{renderCell('Engineer', Engineer)}</TableCell>
-          <TableCell sx={cellStyle}>{renderCell('StartDate', StartDate)}</TableCell>
-          <TableCell sx={cellStyle}>{renderCell('DueDate', DueDate)}</TableCell>
+          <TableCell sx={(cellStyle, { width: '150px' })}>
+            {renderCell('StartDate', StartDate, 'date')}
+          </TableCell>
+          <TableCell sx={(cellStyle, { width: '150px' })}>
+            {renderCell('DueDate', DueDate, 'date')}
+          </TableCell>
           <TableCell sx={cellStyle}>{renderCell('Status', Status)}</TableCell>
         </>
       )}
