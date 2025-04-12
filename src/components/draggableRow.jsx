@@ -4,9 +4,20 @@
 import { useDrag, useDrop } from 'react-dnd';
 import { useState } from 'react';
 // MUI imports
-import { TableRow, TableCell, Checkbox, IconButton, TextField } from '@mui/material';
+import {
+  TableRow,
+  TableCell,
+  Checkbox,
+  IconButton,
+  TextField,
+  Select,
+  MenuItem,
+} from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+
+//dummyData imports
+import userData from '@/components/userData';
 
 const ItemType = 'ROW';
 
@@ -94,6 +105,42 @@ const DraggableRow = ({
     drop: () => ({ index }),
   });
 
+  const renderSelectBox = (field, value) => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        updateRow(id, { [field]: tempValue });
+        setEditingRow(null);
+        setEditingField(null);
+      }
+    };
+    return editingRow === id && editingField === field ? (
+      <Select
+        onBlur={() => {
+          updateRow(id, { [field]: tempValue });
+          setEditingRow(null);
+          setEditingField(null);
+        }}
+        onKeyDown={handleKeyDown}
+        autoFocus
+        onChange={(e) => setTempValue({ [field]: tempValue })}
+      >
+        {userData.map((item) => (
+          <MenuItem value={item.Engineer}>{item.Engineer}</MenuItem>
+        ))}
+      </Select>
+    ) : (
+      <div
+        onClick={() => {
+          setEditingRow(id);
+          setEditingField(field);
+          setTempValue(value);
+        }}
+      >
+        {value}
+      </div>
+    );
+  };
+
   //TextField로 전환하여 값을 수정할 수 있도록 하는 함수
   const renderCell = (field, value, type) => {
     const handleKeyDown = (e) => {
@@ -172,7 +219,7 @@ const DraggableRow = ({
             {renderCell('Division', Division)}
           </TableCell>
           <TableCell sx={(cellStyle, { width: '200px' })}>{renderCell('Work', Work)}</TableCell>
-          <TableCell sx={cellStyle}>{renderCell('Engineer', Engineer)}</TableCell>
+          <TableCell>{renderSelectBox('Enginner', Engineer)}</TableCell>
           <TableCell sx={(cellStyle, { width: '150px' })}>
             {renderCell('StartDate', StartDate, 'date')}
           </TableCell>
