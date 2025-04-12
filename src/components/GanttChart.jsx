@@ -44,7 +44,11 @@ const GanttChart = ({ data, collapsedParts }) => {
   const getEngineerColor = (engineerName) => {
     const user = userData.find((user) => user.Engineer === engineerName);
 
-    return user.color;
+    if (user) {
+      return user.color;
+    } else {
+      return null;
+    }
   };
 
   return (
@@ -126,7 +130,7 @@ const GanttChart = ({ data, collapsedParts }) => {
                         position: 'absolute',
                         height: `${BAR_HEIGHT}px`,
                         top: `${verticalPosition}px`,
-                        backgroundColor: color,
+                        backgroundColor: color ? color : '#d9d9d9',
                         borderRadius: '4px',
                         cursor: 'pointer',
                         left: position.left,
