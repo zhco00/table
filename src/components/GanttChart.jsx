@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { Paper, Tooltip, IconButton } from '@mui/material';
 import { format } from 'date-fns';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -29,7 +30,7 @@ const GanttChart = ({ data, collapsedParts }) => {
   };
 
   const dates = getDates();
-  const totalWidth = dates.length * 40; // 각 날짜 칸의 너비
+  const totalWidth = dates.length * 40;
 
   const getBarPosition = (start, end) => {
     const startDay = Math.floor((new Date(start) - projectStart) / (1000 * 60 * 60 * 24));
