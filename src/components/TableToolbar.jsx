@@ -12,4 +12,4 @@ const TableToolbar = ({ onAdd, onDelete, onExport, onFilter }) => {
       </Button>
     </Toolbar>
   );
-}; 
+};
